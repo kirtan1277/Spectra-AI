@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-badge">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="6" r="3"></circle>
+          <circle cx="18" cy="6" r="3"></circle>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="18" r="3"></circle>
+          <line x1="8.5" y1="7.5" x2="15.5" y2="16.5"></line>
+          <line x1="9" y1="6" x2="15" y2="6"></line>
+          <line x1="6" y1="9" x2="6" y2="15"></line>
+          <line x1="18" y1="9" x2="18" y2="15"></line>
+        </svg>
+      </div>
+      <h1 class="title">Graph Analyzer</h1>
+      <p class="subtitle">Analyze the properties of your graph</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Photo Upload Card -->
+      <section class="card upload-card">
+        <div class="card-header">
+          <div class="header-with-badge">
+            <h2>Upload Graph Photo</h2>
+            <span class="badge-feature">AI Vision</span>
+          </div>
+          <button type="button" id="btn-sample-photo" class="btn-ghost" title="Load an example graph photo">
+            📸 Try Sample Photo
+          </button>
+        </div>
+
+        <p class="section-description">
+          Upload any graph photo (linear equation plot, line graph, geometric shape, or network). 
+          <strong>Pre-drawn dots are not required</strong> — the AI automatically detects intercepts, corners, and vertex points directly from the lines!
+        </p>
+
+        <!-- Dropzone Area -->
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload graph photo">
+          <input type="file" id="photo-input" accept="image/png, image/jpeg, image/webp" class="file-input-hidden">
+          
+          <div class="dropzone-content" id="dropzone-prompt">
+            <div class="dropzone-icon">📷</div>
+            <p class="dropzone-main-text">
+              <span class="text-highlight">Click to browse</span> or drag and drop your photo here
+            </p>
+            <p class="dropzone-sub-text">Supports PNG, JPG, JPEG, WEBP (Max 10MB)</p>
+          </div>
+
+          <!-- Preview Container (Hidden initially) -->
+          <div class="preview-container hidden" id="preview-container">
+            <div class="preview-media">
+              <img id="image-preview" src="" alt="Graph photo preview">
+            </div>
+            <div class="preview-info">
+              <span id="preview-filename" class="preview-filename">graph.png</span>
+              <span id="preview-filesize" class="preview-filesize">0 KB</span>
+              <button type="button" id="btn-remove-photo" class="btn-remove" title="Remove photo">&times; Remove</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="upload-actions">
+          <button type="button" id="btn-detect-photo" class="btn-secondary" disabled>
+            <span class="btn-text">Detect Graph from Photo</span>
+            <span class="spinner hidden" id="detect-spinner"></span>
+          </button>
+
+          <!-- API Key & Model Settings Collapsible Toggle -->
+          <details class="api-key-accordion">
+            <summary>⚙️ Gemini AI Settings (API Key &amp; Model)</summary>
+            <div class="api-key-panel">
+              <div class="setting-row">
+                <label for="model-select">Vision Model</label>
+                <select id="model-select" class="select-input">
+                  <option value="gemini-3.6-flash" selected>Gemini 3.6 Flash (Recommended)</option>
+                  <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                  <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="custom">Custom Model...</option>
+                </select>
+              </div>
+
+              <div id="custom-model-group" class="setting-row hidden">
+                <label for="custom-model-input">Custom Model Name</label>
+                <input 
+                  type="text" 
+                  id="custom-model-input" 
+                  placeholder="e.g. gemini-2.0-flash"
+                  autocomplete="off"
+                >
+              </div>
+
+              <div class="setting-row">
+                <label for="api-key-input">Gemini API Key <span class="label-hint">(Saved in browser)</span></label>
+                <input 
+                  type="password" 
+                  id="api-key-input" 
+                  placeholder="Paste your Gemini API key (or set GEMINI_API_KEY in .env)"
+                  autocomplete="off"
+                >
+              </div>
+
+              <p class="api-key-help">
+                Get a free key from 
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <!-- Photo Detection Alert -->
+        <div id="photo-alert" class="alert hidden" role="alert">
+          <div class="alert-icon" id="photo-alert-icon">ℹ️</div>
+          <div class="alert-message" id="photo-alert-message"></div>
+        </div>
+      </section>
+
+      <!-- Manual Input Card -->
+      <section class="card input-card">
+        <div class="card-header">
+          <h2>Graph Input</h2>
+          <div class="action-buttons">
+            <button type="button" id="btn-example" class="btn-ghost" title="Fill with sample graph">Load Example</button>
+            <button type="button" id="btn-clear" class="btn-ghost text-muted" title="Clear inputs">Clear</button>
+          </div>
+        </div>
+
+        <form id="graph-form" novalidate>
+          <!-- Vertices Input -->
+          <div class="form-group">
+            <label for="vertices-input">
+              <span>Vertices</span>
+              <span class="label-hint">Comma-separated</span>
+            </label>
+            <input 
+              type="text" 
+              id="vertices-input" 
+              name="vertices" 
+              placeholder="e.g. A,B,C,D" 
+              autocomplete="off" 
+              spellcheck="false"
+              required
+            >
+          </div>
+
+          <!-- Edges Textarea -->
+          <div class="form-group">
+            <label for="edges-input">
+              <span>Edges</span>
+              <span class="label-hint">One per line, e.g. A-B</span>
+            </label>
+            <textarea 
+              id="edges-input" 
+              name="edges" 
+              rows="6" 
+              placeholder="e.g.&#10;A-B&#10;A-C&#10;B-C&#10;C-D"
+              autocomplete="off" 
+              spellcheck="false"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="btn-analyze" class="btn-primary">
+            <span class="btn-text">Analyze Graph</span>
+            <span class="spinner hidden" id="spinner"></span>
+          </button>
+        </form>
+
+        <!-- Error Alert (Hidden by default) -->
+        <div id="error-box" class="alert alert-error hidden" role="alert">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-message" id="error-message"></div>
+        </div>
+      </section>
+
+      <!-- Results Section (Hidden by default) -->
+      <section id="results-section" class="results-container hidden" aria-live="polite">
+        
+        <!-- Section: GRAPH INFORMATION -->
+        <div class="card result-card">
+          <div class="card-title-row">
+            <div class="pill-badge">Overview</div>
+            <h3>GRAPH INFORMATION</h3>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Vertices</span>
+              <span class="stat-value" id="res-vertices">0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Edges</span>
+              <span class="stat-value" id="res-edges">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: DEGREE -->
+        <div class="card result-card">
+          <div class="card-title-row">
+            <div class="pill-badge">Degrees</div>
+            <h3>DEGREE</h3>
+          </div>
+          
+          <div class="degree-stats-bar">
+            <div class="stat-pill">
+              <span class="pill-label">Min:</span>
+              <span class="pill-val" id="res-min-degree">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="pill-label">Max:</span>
+              <span class="pill-val" id="res-max-degree">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="pill-label">Average:</span>
+              <span class="pill-val" id="res-avg-degree">0</span>
+            </div>
+          </div>
+
+          <div class="degree-list-container">
+            <div class="degree-list-header">
+              <span>Vertex</span>
+              <span>Degree</span>
+            </div>
+            <div id="degree-list" class="degree-list"></div>
+          </div>
+        </div>
+
+        <!-- Section: PROPERTIES -->
+        <div class="card result-card">
+          <div class="card-title-row">
+            <div class="pill-badge">Analysis</div>
+            <h3>PROPERTIES</h3>
+          </div>
+          
+          <ul class="properties-list" id="properties-list">
+            <li class="property-item" id="prop-connected">
+              <div class="prop-content">
+                <span class="prop-icon">✓</span>
+                <span class="prop-name">Connected</span>
+              </div>
+              <span class="prop-badge">YES</span>
+            </li>
+            <li class="property-item" id="prop-complete">
+              <div class="prop-content">
+                <span class="prop-icon">✗</span>
+                <span class="prop-name">Complete</span>
+              </div>
+              <span class="prop-badge">NO</span>
+            </li>
+            <li class="property-item" id="prop-regular">
+              <div class="prop-content">
+                <span class="prop-icon">✗</span>
+                <span class="prop-name">Regular</span>
+              </div>
+              <span class="prop-badge">NO</span>
+            </li>
+            <li class="property-item" id="prop-bipartite">
+              <div class="prop-content">
+                <span class="prop-icon">✗</span>
+                <span class="prop-name">Bipartite</span>
+              </div>
+              <span class="prop-badge">NO</span>
+            </li>
+            <li class="property-item" id="prop-cycle">
+              <div class="prop-content">
+                <span class="prop-icon">✓</span>
+                <span class="prop-name">Contains cycle</span>
+              </div>
+              <span class="prop-badge">YES</span>
+            </li>
+          </ul>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Graph Analyzer &bull; Built with Flask, NetworkX &amp; Gemini Vision</p>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
